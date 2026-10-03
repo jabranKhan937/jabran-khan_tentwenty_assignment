@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { useNetInfo } from '@react-native-community/netinfo';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { colors, fonts, spacing } from '@/constants/theme';
@@ -13,6 +14,7 @@ import {
   MovieListLoading,
 } from '@/features/movies/list-states';
 import { useUpcomingMovies } from '@/features/movies/use-upcoming-movies';
+import { SearchPanel } from '@/features/search/search-panel';
 
 export default function WatchScreen() {
   const net = useNetInfo();
@@ -30,39 +32,53 @@ export default function WatchScreen() {
 
   const offline = net.isConnected === false;
   const showCachedList = movies.length > 0;
+  const [searching, setSearching] = useState(false);
 
   return (
     <Screen>
       <View style={styles.column}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Watch</Text>
-          <Ionicons name="search" size={22} color={colors.text} />
-        </View>
-        {offline && showCachedList ? (
-          <Text style={styles.offline}>No connection. Showing saved movies.</Text>
-        ) : null}
-        {isPending && !showCachedList ? (
-          <MovieListLoading />
-        ) : isError && !showCachedList ? (
-          <MovieListError error={error} onRetry={() => refetch()} />
+        {searching ? (
+          <SearchPanel onClose={() => setSearching(false)} />
         ) : (
-          <FlashList
-            data={movies}
-            keyExtractor={(movie) => String(movie.id)}
-            renderItem={({ item }) => <MovieCard movie={item} />}
-            ItemSeparatorComponent={Separator}
-            contentContainerStyle={styles.list}
-            refreshing={isRefetching && !isFetchingNextPage}
-            onRefresh={() => refetch()}
-            onEndReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
-            onEndReachedThreshold={0.4}
-            ListEmptyComponent={MovieListEmpty}
-            ListFooterComponent={<MovieListFooter visible={isFetchingNextPage} />}
-          />
+          <>
+            <View style={styles.header}>
+              <Text style={styles.title}>Watch</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Search"
+                onPress={() => setSearching(true)}
+                hitSlop={8}
+              >
+                <Ionicons name="search" size={22} color={colors.text} />
+              </Pressable>
+            </View>
+            {offline && showCachedList ? (
+              <Text style={styles.offline}>No connection. Showing saved movies.</Text>
+            ) : null}
+            {isPending && !showCachedList ? (
+              <MovieListLoading />
+            ) : isError && !showCachedList ? (
+              <MovieListError error={error} onRetry={() => refetch()} />
+            ) : (
+              <FlashList
+                data={movies}
+                keyExtractor={(movie) => String(movie.id)}
+                renderItem={({ item }) => <MovieCard movie={item} />}
+                ItemSeparatorComponent={Separator}
+                contentContainerStyle={styles.list}
+                refreshing={isRefetching && !isFetchingNextPage}
+                onRefresh={() => refetch()}
+                onEndReached={() => {
+                  if (hasNextPage && !isFetchingNextPage) {
+                    fetchNextPage();
+                  }
+                }}
+                onEndReachedThreshold={0.4}
+                ListEmptyComponent={MovieListEmpty}
+                ListFooterComponent={<MovieListFooter visible={isFetchingNextPage} />}
+              />
+            )}
+          </>
         )}
       </View>
     </Screen>

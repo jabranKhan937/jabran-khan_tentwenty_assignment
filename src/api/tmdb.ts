@@ -44,7 +44,11 @@ function apiKey(): string {
   return key;
 }
 
-async function get<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
+async function get<T>(
+  path: string,
+  params: Record<string, string | number> = {},
+  signal?: AbortSignal,
+): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`);
   url.searchParams.set('api_key', apiKey());
 
@@ -52,7 +56,7 @@ async function get<T>(path: string, params: Record<string, string | number> = {}
     url.searchParams.set(name, String(value));
   }
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal });
 
   if (!response.ok) {
     throw new TmdbError(`TMDb request failed for ${path}`, response.status);
@@ -65,8 +69,8 @@ export function getUpcomingMovies(page = 1): Promise<PagedMovies> {
   return get<PagedDto>('/movie/upcoming', { page }).then(toPagedMovies);
 }
 
-export function searchMovies(query: string, page = 1): Promise<PagedMovies> {
-  return get<PagedDto>('/search/movie', { query, page }).then(toPagedMovies);
+export function searchMovies(query: string, page = 1, signal?: AbortSignal): Promise<PagedMovies> {
+  return get<PagedDto>('/search/movie', { query, page }, signal).then(toPagedMovies);
 }
 
 export function getMovie(id: number): Promise<MovieDetail> {
