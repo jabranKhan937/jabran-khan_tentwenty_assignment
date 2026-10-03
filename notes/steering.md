@@ -5,3 +5,5 @@
 - The template locked orientation to portrait and followed the system dark theme. The brief asks for portrait and landscape, and the Figma is a light UI. Orientation is unlocked and the interface style is light, so an undesigned dark theme cannot appear.
 - The template's `reset-project` script restores the Expo example. Removed, so a later reset cannot wipe the assignment.
 - The Watch header draws the search icon from frame 01, but it is not a button yet. A control that does nothing is a dead state. It becomes the search action in the search slice.
+- TMDb `/videos` returns a YouTube id, not a file URL. The trailer uses a WebView and the YouTube IFrame API so it can autoplay, report when it ends, and report a playback error. The video id is checked before it is placed in the page.
+- Dates, halls, and seat prices are the values drawn in the Figma frames. They are not loaded from TMDb. Proceed to pay confirms the selection and states that nothing is booked or charged.

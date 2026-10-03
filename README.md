@@ -32,4 +32,4 @@ The app reads that variable. `.env` is gitignored. Do not commit the key.
 
 ## What's here
 
-Watch lists upcoming movies from TMDb, pages as you scroll, and keeps the last successful list on disk so it still opens offline. Detail, trailer, search, and seats come in later commits.
+Watch lists upcoming movies from TMDb, pages as you scroll, and keeps the last successful list on disk so it still opens offline. A movie opens its detail, and Watch Trailer plays the YouTube trailer full screen. It starts on its own, closes when the video ends, and can be closed early. Get Tickets opens a date, hall, and seat map. That map is interface only: choosing seats updates the total, and Proceed to pay does not book anything or take payment. Search comes in a later commit.
