@@ -6,17 +6,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts, spacing } from '@/constants/theme';
 import { useMovieDetail } from '@/features/movies/use-movie-detail';
+import { useOrientation } from '@/hooks/use-orientation';
 import {
   buildSeats,
   halls,
+  SEAT_ROWS,
+  SEATS_PER_SIDE,
   seatPrice,
   showDates,
+  showtimeLabel,
   type Seat,
   type SeatKind,
 } from '@/features/seats/showtimes';
-
-const ROWS = 10;
-const SEATS_PER_SIDE = 4;
 
 export default function SeatMapScreen() {
   const { id: rawId, date: dateId, hall: hallId } = useLocalSearchParams<{
@@ -26,6 +27,7 @@ export default function SeatMapScreen() {
   }>();
   const id = Number(rawId);
   const insets = useSafeAreaInsets();
+  const { width, isLandscape } = useOrientation();
   const query = useMovieDetail(id);
   const seats = useMemo(() => buildSeats(), []);
   const [selected, setSelected] = useState<string[]>(['3-4']);
@@ -37,6 +39,11 @@ export default function SeatMapScreen() {
   const title = query.data?.movie.title ?? 'Select seats';
   const chosen = seats.filter((seat) => selected.includes(seat.id));
   const total = chosen.reduce((sum, seat) => sum + seatPrice(seat.kind), 0);
+  const mapWidth = isLandscape ? width * 0.58 : width - insets.left - insets.right;
+  const seatSize = Math.max(
+    8,
+    Math.min(15, Math.floor((mapWidth - 70) / (SEATS_PER_SIDE * 2) - 3)),
+  );
 
   function toggle(seat: Seat) {
     if (seat.kind === 'unavailable') {
@@ -49,34 +56,44 @@ export default function SeatMapScreen() {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.screen,
+        { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right },
+      ]}
+    >
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
         <View style={styles.heading}>
           <Text style={styles.title} numberOfLines={1}>
             {title}
           </Text>
-          <Text style={styles.subtitle}>
-            {date.month} {date.day} · {hall.time} {hall.name}
-          </Text>
+          <Text style={styles.subtitle}>{showtimeLabel(date, hall, query.data?.movie.releaseDate ?? '')}</Text>
         </View>
         <View style={styles.spacer} />
       </View>
+      <View style={isLandscape ? styles.landscape : styles.stacked}>
       <View style={styles.mapWrap}>
-        <Text style={styles.screenLabel}>SCREEN</Text>
         <View style={styles.screenCurve} />
+        <Text style={styles.screenLabel}>SCREEN</Text>
         <ScrollView contentContainerStyle={styles.mapContent} showsVerticalScrollIndicator={false}>
           <View style={{ transform: [{ scale }] }}>
-            {Array.from({ length: ROWS }, (_, index) => index + 1).map((row) => (
+            {Array.from({ length: SEAT_ROWS }, (_, index) => index + 1).map((row) => (
               <View key={row} style={styles.row}>
                 <Text style={styles.rowLabel}>{row}</Text>
                 <View style={styles.side}>
                   {seats
                     .filter((seat) => seat.row === row && seat.number <= SEATS_PER_SIDE)
                     .map((seat) => (
-                      <SeatButton key={seat.id} seat={seat} selected={selected.includes(seat.id)} onPress={() => toggle(seat)} />
+                      <SeatButton
+                        key={seat.id}
+                        seat={seat}
+                        size={seatSize}
+                        selected={selected.includes(seat.id)}
+                        onPress={() => toggle(seat)}
+                      />
                     ))}
                 </View>
                 <View style={styles.aisle} />
@@ -84,7 +101,13 @@ export default function SeatMapScreen() {
                   {seats
                     .filter((seat) => seat.row === row && seat.number > SEATS_PER_SIDE)
                     .map((seat) => (
-                      <SeatButton key={seat.id} seat={seat} selected={selected.includes(seat.id)} onPress={() => toggle(seat)} />
+                      <SeatButton
+                        key={seat.id}
+                        seat={seat}
+                        size={seatSize}
+                        selected={selected.includes(seat.id)}
+                        onPress={() => toggle(seat)}
+                      />
                     ))}
                 </View>
               </View>
@@ -92,39 +115,57 @@ export default function SeatMapScreen() {
           </View>
         </ScrollView>
         <View style={styles.zoom}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Zoom out" onPress={() => setScale((value) => Math.max(0.8, value - 0.1))} style={styles.zoomButton}>
-            <Ionicons name="remove" size={18} color={colors.text} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Zoom in" onPress={() => setScale((value) => Math.min(1.4, value + 0.1))} style={styles.zoomButton}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Zoom in"
+            onPress={() => setScale((value) => Math.min(1.35, Number((value + 0.08).toFixed(2))))}
+            style={styles.zoomButton}
+          >
             <Ionicons name="add" size={18} color={colors.text} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Zoom out"
+            onPress={() => setScale((value) => Math.max(0.85, Number((value - 0.08).toFixed(2))))}
+            style={styles.zoomButton}
+          >
+            <Ionicons name="remove" size={18} color={colors.text} />
           </Pressable>
         </View>
       </View>
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+      <View
+        style={[
+          styles.footer,
+          isLandscape && styles.footerLandscape,
+          { paddingBottom: insets.bottom + spacing.md },
+        ]}
+      >
         <View style={styles.legend}>
           <Legend swatch={colors.seatSelected} label="Selected" />
           <Legend swatch={colors.seatUnavailable} label="Not available" />
-          <Legend swatch={colors.seatVip} label={`VIP $${SEAT_PRICE_LABEL.vip}`} />
-          <Legend swatch={colors.seatRegular} label={`Regular $${SEAT_PRICE_LABEL.regular}`} />
+          <Legend swatch={colors.seatVip} label="VIP (150$)" />
+          <Legend swatch={colors.seatRegular} label="Regular (50$)" />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {chosen.length === 0 ? (
-            <Text style={styles.emptySelection}>Select a seat</Text>
-          ) : (
-            chosen.map((seat) => (
-              <Pressable key={seat.id} accessibilityRole="button" accessibilityLabel={`Remove seat ${seat.number} row ${seat.row}`} onPress={() => toggle(seat)} style={styles.chip}>
-                <Text style={styles.chipLabel}>
-                  {seat.number} / {seat.row} row
-                </Text>
-                <Ionicons name="close" size={14} color={colors.tabActive} />
-              </Pressable>
-            ))
-          )}
+          {chosen.map((seat) => (
+            <Pressable
+              key={seat.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove seat ${seat.number} row ${seat.row}`}
+              onPress={() => toggle(seat)}
+              style={styles.chip}
+            >
+              <Text style={styles.chipLabel}>
+                {seat.number} / {seat.row} row
+              </Text>
+              <Ionicons name="close" size={14} color={colors.text} />
+            </Pressable>
+          ))}
         </ScrollView>
         <View style={styles.payRow}>
-          <View>
+          <View style={styles.totalBox}>
             <Text style={styles.totalLabel}>Total Price</Text>
-            <Text style={styles.total}>${total}</Text>
+            <Text style={styles.total}>$ {total}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -136,12 +177,14 @@ export default function SeatMapScreen() {
           </Pressable>
         </View>
       </View>
+      </View>
       <Modal visible={previewOpen} transparent animationType="fade" onRequestClose={() => setPreviewOpen(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Preview only</Text>
             <Text style={styles.modalBody}>
-              {chosen.length} {chosen.length === 1 ? 'seat' : 'seats'} selected for ${total}. Nothing is booked and no payment is taken.
+              {chosen.length} {chosen.length === 1 ? 'seat' : 'seats'} selected for ${total}. Nothing is booked and no
+              payment is taken.
             </Text>
             <Pressable accessibilityRole="button" onPress={() => setPreviewOpen(false)} style={styles.modalButton}>
               <Text style={styles.payLabel}>Close</Text>
@@ -152,8 +195,6 @@ export default function SeatMapScreen() {
     </View>
   );
 }
-
-const SEAT_PRICE_LABEL = { regular: 50, vip: 150 };
 
 function seatColor(kind: SeatKind, selected: boolean): string {
   if (selected) {
@@ -170,10 +211,12 @@ function seatColor(kind: SeatKind, selected: boolean): string {
 
 function SeatButton({
   seat,
+  size,
   selected,
   onPress,
 }: {
   seat: Seat;
+  size: number;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -183,8 +226,9 @@ function SeatButton({
       accessibilityLabel={`Row ${seat.row} seat ${seat.number}`}
       accessibilityState={{ selected, disabled: seat.kind === 'unavailable' }}
       disabled={seat.kind === 'unavailable'}
+      hitSlop={2}
       onPress={onPress}
-      style={[styles.seat, { backgroundColor: seatColor(seat.kind, selected) }]}
+      style={[styles.seat, { width: size, height: size, backgroundColor: seatColor(seat.kind, selected) }]}
     />
   );
 }
@@ -201,7 +245,7 @@ function Legend({ swatch, label }: { swatch: string; label: string }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
@@ -215,150 +259,175 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semibold,
     fontSize: 16,
   },
   subtitle: {
-    color: colors.textMuted,
-    fontFamily: fonts.regular,
+    color: colors.primary,
+    fontFamily: fonts.medium,
     fontSize: 12,
+    marginTop: 2,
   },
   spacer: {
-    width: 24,
+    width: 22,
+  },
+  stacked: {
+    flex: 1,
+  },
+  landscape: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
   mapWrap: {
     flex: 1,
+  },
+  screenCurve: {
+    alignSelf: 'center',
+    width: '72%',
+    height: 18,
+    borderTopWidth: 2,
+    borderColor: colors.primary,
+    borderTopLeftRadius: 120,
+    borderTopRightRadius: 120,
+    marginTop: spacing.sm,
   },
   screenLabel: {
     textAlign: 'center',
     color: colors.textMuted,
     fontFamily: fonts.medium,
-    fontSize: 12,
+    fontSize: 10,
     letterSpacing: 2,
-    marginTop: spacing.sm,
-  },
-  screenCurve: {
-    alignSelf: 'center',
-    width: '70%',
-    height: 12,
-    borderTopWidth: 3,
-    borderColor: colors.primary,
-    borderTopLeftRadius: 80,
-    borderTopRightRadius: 80,
+    marginTop: -10,
     marginBottom: spacing.md,
   },
   mapContent: {
     alignItems: 'center',
-    paddingBottom: spacing.lg,
+    paddingBottom: 56,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   rowLabel: {
-    width: 18,
+    width: 16,
     color: colors.textMuted,
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: 9,
     textAlign: 'center',
   },
   side: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 3,
   },
   aisle: {
-    width: 18,
+    width: 14,
   },
   seat: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
+    borderRadius: 2,
   },
   zoom: {
     position: 'absolute',
-    right: spacing.md,
-    top: 48,
-    gap: spacing.sm,
+    right: spacing.lg,
+    bottom: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.md,
   },
   zoomButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   footer: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    gap: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    paddingTop: spacing.lg,
+    gap: spacing.md,
+  },
+  footerLandscape: {
+    width: 320,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 0,
+    justifyContent: 'flex-end',
   },
   legend: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    rowGap: spacing.sm,
   },
   legendItem: {
+    width: '50%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
   },
   legendSwatch: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
+    width: 16,
+    height: 16,
+    borderRadius: 4,
   },
   legendLabel: {
-    color: colors.textMuted,
-    fontFamily: fonts.regular,
-    fontSize: 11,
+    color: colors.text,
+    fontFamily: fonts.medium,
+    fontSize: 12,
   },
   chips: {
     gap: spacing.sm,
+    minHeight: 32,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.seatSelected,
+    gap: 8,
+    backgroundColor: colors.surface,
     borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   chipLabel: {
-    color: colors.tabActive,
+    color: colors.text,
     fontFamily: fonts.medium,
-    fontSize: 12,
-  },
-  emptySelection: {
-    color: colors.textMuted,
-    fontFamily: fonts.regular,
     fontSize: 12,
   },
   payRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.md,
+  },
+  totalBox: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    minWidth: 108,
   },
   totalLabel: {
     color: colors.textMuted,
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: 10,
   },
   total: {
     color: colors.text,
     fontFamily: fonts.semibold,
-    fontSize: 18,
+    fontSize: 16,
   },
   pay: {
     flex: 1,
     backgroundColor: colors.primary,
     borderRadius: 10,
-    minHeight: 50,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },

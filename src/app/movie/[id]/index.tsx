@@ -3,14 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { imageUrl } from '@/api/tmdb';
@@ -19,6 +12,7 @@ import { formatInTheaters } from '@/features/movies/format-release';
 import { MovieListError, MovieListLoading } from '@/features/movies/list-states';
 import { TrailerPlayer } from '@/features/movies/trailer-player';
 import { useMovieDetail } from '@/features/movies/use-movie-detail';
+import { useOrientation } from '@/hooks/use-orientation';
 
 const chipColors = [
   colors.genreAction,
@@ -50,7 +44,7 @@ export default function MovieDetailScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const id = Number(rawId);
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  const { width, height, isLandscape } = useOrientation();
   const query = useMovieDetail(id);
   const [trailerOpen, setTrailerOpen] = useState(false);
 
@@ -89,70 +83,83 @@ export default function MovieDetailScreen() {
   const still = imageUrl(detail.stillPath, 'w780');
   const release = formatInTheaters(detail.movie.releaseDate);
   const trailer = detail.trailer;
+  const heroHeight = Math.min(Math.max(height * 0.56, 380), height * 0.68);
+  const frameStyle = {
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  };
+
+  const hero = (
+    <View style={[styles.hero, isLandscape ? styles.heroLandscape : { height: heroHeight }]}>
+      {still ? <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.45)', 'transparent', 'rgba(0,0,0,0.82)']}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.heroActions}>
+        {release ? <Text style={styles.release}>{release}</Text> : null}
+        <View style={isLandscape ? styles.heroActionsRow : styles.heroActionsStack}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/movie/[id]/seats', params: { id: String(id) } })}
+            style={[styles.tickets, isLandscape && styles.actionFlex]}
+          >
+            <Text style={styles.ticketsLabel}>Get Tickets</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={trailer ? {} : { disabled: true }}
+            disabled={!trailer}
+            onPress={() => setTrailerOpen(true)}
+            style={[styles.trailer, isLandscape && styles.actionFlex, !trailer && styles.trailerDisabled]}
+          >
+            <Ionicons name="play" size={14} color={colors.tabActive} />
+            <Text style={styles.trailerLabel}>{trailer ? 'Watch Trailer' : 'No trailer'}</Text>
+          </Pressable>
+        </View>
+        {!trailer ? <Text style={styles.noTrailer}>This movie has no YouTube trailer yet.</Text> : null}
+      </View>
+    </View>
+  );
+
+  const details = (
+    <View style={[styles.body, { maxWidth: isLandscape ? 420 : width }]}>
+      <Text style={styles.section}>Genres</Text>
+      <View style={styles.chips}>
+        {detail.movie.genres.length === 0 ? (
+          <Text style={styles.overview}>No genres listed.</Text>
+        ) : (
+          detail.movie.genres.map((genre, index) => (
+            <View key={genre.id} style={[styles.chip, { backgroundColor: chipColor(genre.name, index) }]}>
+              <Text style={styles.chipLabel}>{genre.name}</Text>
+            </View>
+          ))
+        )}
+      </View>
+      <View style={styles.divider} />
+      <Text style={styles.section}>Overview</Text>
+      <Text style={styles.overview}>
+        {detail.movie.overview || 'No overview has been published for this movie.'}
+      </Text>
+    </View>
+  );
 
   return (
-    <View style={styles.plain}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }}>
-        <View style={[styles.hero, { height: Math.max(420, height * 0.62) }]}>
-          {still ? (
-            <Image source={{ uri: still }} style={StyleSheet.absoluteFill} contentFit="cover" />
-          ) : null}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.45)', 'transparent', 'rgba(0,0,0,0.82)']}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.heroActions}>
-            {release ? <Text style={styles.release}>{release}</Text> : null}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                router.push({ pathname: '/movie/[id]/seats', params: { id: String(id) } })
-              }
-              style={styles.tickets}
-            >
-              <Text style={styles.ticketsLabel}>Get Tickets</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={trailer ? {} : { disabled: true }}
-              disabled={!trailer}
-              onPress={() => setTrailerOpen(true)}
-              style={[styles.trailer, !trailer && styles.trailerDisabled]}
-            >
-              <Ionicons name="play" size={14} color={colors.tabActive} />
-              <Text style={styles.trailerLabel}>
-                {trailer ? 'Watch Trailer' : 'No trailer'}
-              </Text>
-            </Pressable>
-            {!trailer ? (
-              <Text style={styles.noTrailer}>This movie has no YouTube trailer yet.</Text>
-            ) : null}
-          </View>
+    <View style={[styles.plain, frameStyle]}>
+      {isLandscape ? (
+        <View style={styles.landscape}>
+          {hero}
+          <ScrollView style={styles.detailPane} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }}>
+            {details}
+          </ScrollView>
         </View>
-        <View style={styles.body}>
-          <Text style={styles.section}>Genres</Text>
-          <View style={styles.chips}>
-            {detail.movie.genres.length === 0 ? (
-              <Text style={styles.overview}>No genres listed.</Text>
-            ) : (
-              detail.movie.genres.map((genre, index) => (
-                <View
-                  key={genre.id}
-                  style={[styles.chip, { backgroundColor: chipColor(genre.name, index) }]}
-                >
-                  <Text style={styles.chipLabel}>{genre.name}</Text>
-                </View>
-              ))
-            )}
-          </View>
-          <View style={styles.divider} />
-          <Text style={styles.section}>Overview</Text>
-          <Text style={styles.overview}>
-            {detail.movie.overview || 'No overview has been published for this movie.'}
-          </Text>
-        </View>
-      </ScrollView>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      ) : (
+        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }}>
+          {hero}
+          {details}
+        </ScrollView>
+      )}
+      <View style={[styles.header, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right }]}>
         <BackHeader onBack={() => router.back()} light />
       </View>
       {trailerOpen && trailer ? (
@@ -202,14 +209,34 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 24,
   },
+  landscape: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  detailPane: {
+    flex: 1,
+  },
   hero: {
     justifyContent: 'flex-end',
     backgroundColor: colors.tabBar,
+  },
+  heroLandscape: {
+    flex: 1.1,
   },
   heroActions: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
     gap: spacing.sm,
+  },
+  heroActionsStack: {
+    gap: spacing.sm,
+  },
+  heroActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionFlex: {
+    flex: 1,
   },
   release: {
     color: colors.tabActive,

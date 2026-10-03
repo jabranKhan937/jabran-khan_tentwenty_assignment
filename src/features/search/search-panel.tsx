@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
@@ -127,9 +128,12 @@ export function SearchPanel({ onClose }: SearchPanelProps) {
 }
 
 function GenreGrid({ onSelect }: { onSelect: (genre: SearchGenre) => void }) {
+  const { width, height } = useWindowDimensions();
+  const columns = width > height ? 4 : 2;
+
   return (
-        <ScrollView contentContainerStyle={styles.genres} keyboardShouldPersistTaps="handled">
-      {chunkGenres(searchGenres).map((row) => (
+    <ScrollView contentContainerStyle={styles.genres} keyboardShouldPersistTaps="handled">
+      {chunkGenres(searchGenres, columns).map((row) => (
         <View key={row.map((genre) => genre.name).join('-')} style={styles.genreRow}>
           {row.map((genre) => (
             <Pressable
@@ -205,11 +209,11 @@ function SearchResults({
   );
 }
 
-function chunkGenres(genres: SearchGenre[]): SearchGenre[][] {
+function chunkGenres(genres: SearchGenre[], columns: number): SearchGenre[][] {
   const rows: SearchGenre[][] = [];
 
-  for (let index = 0; index < genres.length; index += 2) {
-    rows.push(genres.slice(index, index + 2));
+  for (let index = 0; index < genres.length; index += columns) {
+    rows.push(genres.slice(index, index + columns));
   }
 
   return rows;

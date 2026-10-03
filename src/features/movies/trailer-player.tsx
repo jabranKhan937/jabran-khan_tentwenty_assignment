@@ -85,7 +85,7 @@ export function TrailerPlayer({ videoId, onClose }: TrailerPlayerProps) {
           accessibilityRole="button"
           accessibilityLabel="Close trailer"
           onPress={onClose}
-          style={[styles.close, { top: insets.top + spacing.sm }]}
+          style={[styles.close, { top: insets.top + spacing.sm, right: insets.right + spacing.md }]}
         >
           <Ionicons name="close" size={22} color={colors.tabActive} />
         </Pressable>
@@ -105,7 +105,6 @@ const styles = StyleSheet.create({
   },
   close: {
     position: 'absolute',
-    right: spacing.md,
     width: 36,
     height: 36,
     borderRadius: 18,

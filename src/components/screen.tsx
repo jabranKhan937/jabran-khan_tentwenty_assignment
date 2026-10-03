@@ -12,7 +12,14 @@ export function Screen({ children }: ScreenProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>{children}</View>
+    <View
+      style={[
+        styles.screen,
+        { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right },
+      ]}
+    >
+      {children}
+    </View>
   );
 }
 

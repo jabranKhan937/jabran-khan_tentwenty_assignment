@@ -8,6 +8,7 @@ export type Hall = {
   id: string;
   time: string;
   name: string;
+  shortName: string;
   priceFrom: number;
   bonus: number;
 };
@@ -21,9 +22,38 @@ export const showDates: ShowDate[] = [
 ];
 
 export const halls: Hall[] = [
-  { id: 'hall-1', time: '12:30', name: 'Cinetech + Hall 1', priceFrom: 50, bonus: 2500 },
-  { id: 'hall-2', time: '13:30', name: 'Cinetech + Hall 2', priceFrom: 75, bonus: 3000 },
+  {
+    id: 'hall-1',
+    time: '12:30',
+    name: 'Cinetech + Hall 1',
+    shortName: 'Hall 1',
+    priceFrom: 50,
+    bonus: 2500,
+  },
+  {
+    id: 'hall-2',
+    time: '13:30',
+    name: 'Cinetech + Hall 2',
+    shortName: 'Hall 2',
+    priceFrom: 75,
+    bonus: 3000,
+  },
 ];
+
+export const SEAT_ROWS = 10;
+export const SEATS_PER_SIDE = 8;
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+export function showtimeLabel(date: ShowDate, hall: Hall, releaseDate: string): string {
+  const year = releaseDate.slice(0, 4) || '2021';
+  const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(
+    date.month.slice(0, 3),
+  );
+  const month = monthIndex >= 0 ? MONTHS[monthIndex] : date.month;
+
+  return `${month} ${date.day}, ${year}  |  ${hall.time} ${hall.shortName}`;
+}
 
 export type SeatKind = 'regular' | 'vip' | 'unavailable';
 
@@ -34,13 +64,32 @@ export type Seat = {
   kind: SeatKind;
 };
 
-const BLOCKED = new Set(['2-3', '5-7', '7-1', '7-2', '4-8']);
+const BLOCKED = new Set([
+  '1-6',
+  '2-3',
+  '2-12',
+  '3-8',
+  '4-2',
+  '4-11',
+  '4-15',
+  '5-5',
+  '5-9',
+  '5-14',
+  '6-7',
+  '6-13',
+  '7-1',
+  '7-4',
+  '7-10',
+  '8-6',
+  '8-12',
+  '8-16',
+]);
 
 export function buildSeats(): Seat[] {
   const seats: Seat[] = [];
 
-  for (let row = 1; row <= 10; row += 1) {
-    for (let number = 1; number <= 8; number += 1) {
+  for (let row = 1; row <= SEAT_ROWS; row += 1) {
+    for (let number = 1; number <= SEATS_PER_SIDE * 2; number += 1) {
       const id = `${row}-${number}`;
       let kind: SeatKind = 'regular';
 

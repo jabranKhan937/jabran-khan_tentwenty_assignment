@@ -1,29 +1,46 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts, spacing } from '@/constants/theme';
 import { formatInTheaters } from '@/features/movies/format-release';
 import { useMovieDetail } from '@/features/movies/use-movie-detail';
-import { halls, showDates, type Hall, type ShowDate } from '@/features/seats/showtimes';
+import { useOrientation } from '@/hooks/use-orientation';
+import {
+  buildSeats,
+  halls,
+  SEATS_PER_SIDE,
+  showDates,
+  type Hall,
+  type SeatKind,
+  type ShowDate,
+} from '@/features/seats/showtimes';
 
 export default function SeatTimesScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const id = Number(rawId);
   const insets = useSafeAreaInsets();
+  const { width, isLandscape } = useOrientation();
   const query = useMovieDetail(id);
   const [dateId, setDateId] = useState(showDates[0].id);
   const [hallId, setHallId] = useState(halls[0].id);
   const title = query.data?.movie.title ?? 'Select seats';
   const release = query.data ? formatInTheaters(query.data.movie.releaseDate) : null;
+  const contentWidth = width - insets.left - insets.right;
+  const cardWidth = isLandscape ? Math.min(contentWidth * 0.42, 340) : Math.min(contentWidth * 0.72, 280);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.screen,
+        { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right },
+      ]}
+    >
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -32,16 +49,23 @@ export default function SeatTimesScreen() {
       </View>
       {release ? <Text style={styles.release}>{release}</Text> : null}
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.section}>Date</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dates}>
           {showDates.map((date) => (
             <DateChip key={date.id} date={date} selected={date.id === dateId} onPress={() => setDateId(date.id)} />
           ))}
         </ScrollView>
-        <View style={styles.halls}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.halls}>
           {halls.map((hall) => (
-            <HallCard key={hall.id} hall={hall} selected={hall.id === hallId} onPress={() => setHallId(hall.id)} />
+            <HallCard
+              key={hall.id}
+              hall={hall}
+              selected={hall.id === hallId}
+              width={cardWidth}
+              onPress={() => setHallId(hall.id)}
+            />
           ))}
-        </View>
+        </ScrollView>
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
         <Pressable
@@ -77,8 +101,9 @@ function DateChip({
       onPress={onPress}
       style={[styles.date, selected && styles.dateSelected]}
     >
-      <Text style={[styles.dateDay, selected && styles.dateTextSelected]}>{date.day}</Text>
-      <Text style={[styles.dateMonth, selected && styles.dateTextSelected]}>{date.month}</Text>
+      <Text style={[styles.dateLabel, selected && styles.dateLabelSelected]}>
+        {date.day} {date.month}
+      </Text>
     </Pressable>
   );
 }
@@ -86,107 +111,144 @@ function DateChip({
 function HallCard({
   hall,
   selected,
+  width,
   onPress,
 }: {
   hall: Hall;
   selected: boolean;
+  width: number;
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[styles.hall, selected && styles.hallSelected]}
-    >
-      <Text style={styles.hallTime}>{hall.time}</Text>
-      <Text style={styles.hallName}>{hall.name}</Text>
-      <View style={styles.preview} accessibilityElementsHidden>
-        {Array.from({ length: 24 }, (_, index) => (
-          <View key={index} style={styles.previewSeat} />
-        ))}
+    <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={{ width }}>
+      <View style={styles.hallHeading}>
+        <Text style={styles.hallTime}>{hall.time}</Text>
+        <Text style={styles.hallName}>{hall.name}</Text>
+      </View>
+      <View style={[styles.preview, selected && styles.previewSelected]}>
+        <MiniSeatMap />
       </View>
       <Text style={styles.hallPrice}>
-        From {hall.priceFrom}$ or {hall.bonus} bonus
+        From <Text style={styles.hallPriceStrong}>{hall.priceFrom}$</Text> or{' '}
+        <Text style={styles.hallPriceStrong}>{hall.bonus} bonus</Text>
       </Text>
     </Pressable>
   );
 }
 
+function MiniSeatMap() {
+  const seats = useMemo(() => buildSeats(), []);
+
+  return (
+    <View style={styles.mini}>
+      {Array.from({ length: 10 }, (_, index) => index + 1).map((row) => (
+        <View key={row} style={[styles.miniRow, { paddingHorizontal: (10 - row) * 2 }]}>
+          <View style={styles.miniSide}>
+            {seats
+              .filter((seat) => seat.row === row && seat.number <= SEATS_PER_SIDE)
+              .map((seat) => (
+                <View
+                  key={seat.id}
+                  style={[styles.miniSeat, { backgroundColor: miniColor(seat.kind, seat.id === '3-4') }]}
+                />
+              ))}
+          </View>
+          <View style={styles.miniAisle} />
+          <View style={styles.miniSide}>
+            {seats
+              .filter((seat) => seat.row === row && seat.number > SEATS_PER_SIDE)
+              .map((seat) => (
+                <View key={seat.id} style={[styles.miniSeat, { backgroundColor: miniColor(seat.kind, false) }]} />
+              ))}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function miniColor(kind: SeatKind, selected: boolean): string {
+  if (selected) {
+    return colors.seatSelected;
+  }
+  if (kind === 'vip') {
+    return colors.seatVip;
+  }
+  if (kind === 'unavailable') {
+    return colors.seatUnavailable;
+  }
+  return colors.seatRegular;
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   title: {
     flex: 1,
     textAlign: 'center',
     color: colors.text,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semibold,
     fontSize: 16,
   },
   spacer: {
-    width: 24,
+    width: 22,
   },
   release: {
     textAlign: 'center',
     color: colors.primary,
     fontFamily: fonts.medium,
     fontSize: 14,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   content: {
-    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
-    gap: spacing.lg,
+    gap: spacing.md,
+  },
+  section: {
+    color: colors.text,
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    paddingHorizontal: spacing.lg,
   },
   dates: {
     gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   date: {
-    width: 64,
-    height: 64,
     borderRadius: 10,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.background,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   dateSelected: {
     backgroundColor: colors.primary,
   },
-  dateDay: {
+  dateLabel: {
     color: colors.text,
-    fontFamily: fonts.semibold,
-    fontSize: 16,
-  },
-  dateMonth: {
-    color: colors.text,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.medium,
     fontSize: 12,
   },
-  dateTextSelected: {
+  dateLabelSelected: {
     color: colors.tabActive,
   },
   halls: {
     gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
   },
-  hall: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.xs,
-    backgroundColor: colors.background,
-  },
-  hallSelected: {
-    borderColor: colors.primary,
+  hallHeading: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   hallTime: {
     color: colors.text,
@@ -197,24 +259,48 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontFamily: fonts.regular,
     fontSize: 12,
+    flexShrink: 1,
   },
   preview: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginVertical: spacing.sm,
-    maxWidth: 160,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E8E8ED',
+    backgroundColor: colors.background,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
   },
-  previewSeat: {
+  previewSelected: {
+    borderColor: colors.primary,
+  },
+  mini: {
+    gap: 2,
+    alignItems: 'center',
+  },
+  miniRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  miniSide: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  miniAisle: {
     width: 8,
-    height: 8,
-    borderRadius: 2,
-    backgroundColor: colors.seatRegular,
+  },
+  miniSeat: {
+    width: 4,
+    height: 4,
+    borderRadius: 1,
   },
   hallPrice: {
-    color: colors.textMuted,
-    fontFamily: fonts.medium,
+    color: colors.text,
+    fontFamily: fonts.regular,
     fontSize: 12,
+  },
+  hallPriceStrong: {
+    fontFamily: fonts.semibold,
   },
   footer: {
     paddingHorizontal: spacing.lg,
