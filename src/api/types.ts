@@ -29,6 +29,12 @@ export type MovieVideo = {
   name: string;
 };
 
+export type MovieImage = {
+  filePath: string;
+  width: number;
+  language: string | null;
+};
+
 export type PagedMovies = {
   page: number;
   totalPages: number;
@@ -66,6 +72,17 @@ type VideosDto = {
     official: boolean;
     name: string;
   }>;
+};
+
+type ImageDto = {
+  file_path: string | null;
+  width: number;
+  iso_639_1: string | null;
+};
+
+type ImagesDto = {
+  backdrops?: ImageDto[];
+  posters?: ImageDto[];
 };
 
 export function toMovieSummary(dto: MovieDto): MovieSummary {
@@ -110,4 +127,40 @@ export function toVideos(dto: VideosDto): MovieVideo[] {
   }));
 }
 
-export type { MovieDto, PagedDto, VideosDto };
+function toImages(items: ImageDto[] | undefined): MovieImage[] {
+  return (items ?? []).flatMap((image) => {
+    if (!image.file_path) {
+      return [];
+    }
+
+    return [
+      {
+        filePath: image.file_path,
+        width: image.width,
+        language: image.iso_639_1,
+      },
+    ];
+  });
+}
+
+export function toMovieImages(dto: ImagesDto): { backdrops: MovieImage[]; posters: MovieImage[] } {
+  return {
+    backdrops: toImages(dto.backdrops),
+    posters: toImages(dto.posters),
+  };
+}
+
+export function bestStill(
+  images: { backdrops: MovieImage[]; posters: MovieImage[] },
+  fallback: string | null,
+): string | null {
+  const englishOrNeutral = images.backdrops.filter(
+    (image) => image.language === 'en' || image.language === null,
+  );
+  const pool = englishOrNeutral.length > 0 ? englishOrNeutral : images.backdrops;
+  const widest = [...pool].sort((left, right) => right.width - left.width)[0];
+
+  return widest?.filePath ?? images.posters[0]?.filePath ?? fallback;
+}
+
+export type { MovieDto, PagedDto, VideosDto, ImagesDto };

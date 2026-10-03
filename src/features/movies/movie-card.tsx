@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { imageUrl } from '@/api/tmdb';
 import type { MovieSummary } from '@/api/types';
@@ -14,7 +15,12 @@ export function MovieCard({ movie }: MovieCardProps) {
   const uri = imageUrl(movie.backdropPath ?? movie.posterPath, 'w780');
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={movie.title}
+      onPress={() => router.push({ pathname: '/movie/[id]', params: { id: String(movie.id) } })}
+      style={styles.card}
+    >
       {uri ? (
         <Image
           source={{ uri }}
@@ -31,7 +37,7 @@ export function MovieCard({ movie }: MovieCardProps) {
       <Text style={styles.title} numberOfLines={2}>
         {movie.title}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 

@@ -1,9 +1,12 @@
 import {
   toMovieDetail,
   toPagedMovies,
+  toMovieImages,
   toVideos,
+  type ImagesDto,
   type MovieDetail,
   type MovieDto,
+  type MovieImage,
   type MovieVideo,
   type PagedDto,
   type PagedMovies,
@@ -72,6 +75,10 @@ export function getMovie(id: number): Promise<MovieDetail> {
 
 export function getMovieVideos(id: number): Promise<MovieVideo[]> {
   return get<VideosDto>(`/movie/${id}/videos`).then(toVideos);
+}
+
+export function getMovieImages(id: number): Promise<{ backdrops: MovieImage[]; posters: MovieImage[] }> {
+  return get<ImagesDto>(`/movie/${id}/images`).then(toMovieImages);
 }
 
 export function youtubeTrailer(videos: MovieVideo[]): MovieVideo | null {
