@@ -7,9 +7,11 @@ import {
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 
+import { queryCacheMaxAge, queryClient, queryPersister } from '@/api/query-client';
 import { colors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -33,7 +35,10 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister: queryPersister, maxAge: queryCacheMaxAge }}
+    >
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -41,6 +46,6 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.background },
         }}
       />
-    </>
+    </PersistQueryClientProvider>
   );
 }

@@ -32,4 +32,4 @@ The app reads that variable. `.env` is gitignored. Do not commit the key.
 
 ## What's here
 
-The shell has the theme, Poppins, and the four-tab bar from the Figma. Watch is the entry screen. `src/api/tmdb.ts` is the typed TMDb client for upcoming, search, detail, and videos. The screens that use it come in later commits.
+Watch lists upcoming movies from TMDb, pages as you scroll, and keeps the last successful list on disk so it still opens offline. Detail, trailer, search, and seats come in later commits.
