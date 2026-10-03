@@ -1,0 +1,18 @@
+---
+description: Constraints for the TenTwenty React Native assignment
+alwaysApply: true
+---
+
+# TenTwenty assignment
+
+Build one feature at a time. Do not dump the rest of the app into the current slice.
+
+- React Native with TypeScript. Expo SDK 55, because it is New Architecture only, targets Android API 36, and still supports iOS 15.1. Do not upgrade to SDK 56 or 57; those require iOS 16.4.
+- Functional components and hooks. Keep screens in `src/app` and everything else outside it.
+- The TMDb key comes from `EXPO_PUBLIC_TMDB_API_KEY`. Never commit a real key.
+- Every screen needs a designed loading, empty, and error state.
+- Search results on screen must match the query the user is currently typing. A slower response for an older query must not replace them.
+- Seat selection is UI only. No booking, persistence, or payment.
+- Match the Figma frames. The tab bar is the dark custom bar, not the Expo template's native tabs.
+- Portrait and landscape both have to work.
+- Leave planning notes as they were written. The half-page decision note in `notes/decisions.md` is written by Jabran, not filled in by the agent.
